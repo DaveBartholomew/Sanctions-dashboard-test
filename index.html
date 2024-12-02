@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sanctions Ethnicity Dashboard</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .dashboard {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 10px;
+        }
+        .section {
+            border: 6px solid #ccc;
+            padding: 20px;
+            width: 45%;
+            background-color: #f9f9f9;
+        }
+        .title {
+            font-size: 44px;
+            text-align: center;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .title2 {
+            font-size: 32px;
+            text-align: center;
+            margin-bottom: 20px;
+            color: red;
+        }
+        .section-title {
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        ul {
+            list-style-type: disc;
+            margin-top: 15px;
+            padding-left: 40px;
+        }
+        .chart {
+            width: 100%;
+            height: 300px;
+        }
+        footer {
+          margin-top: 40px;
+          text-align: center;
+          font-size: 24px;
+        }
+        footer a {
+          color: blue;
+          text-decoration: none;
+        }
+        .tooltip {
+            position: absolute;
+            visibility: hidden;
+            background-color: white;
+            border: 1px solid black;
+            padding: 5px;
+            pointer-events: none;
+            font-size: 16px;
+        }    
+        .value {
+            font-size: 12px;
+            text-anchor: middle;
+            fill: black;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- DWP logo at the top left -->
+    <a><img src="logo.jpg" alt="Logo" id="logo"></a>
+
+    <!-- Overall Title -->
+    <div class="title">Benefit Sanction Ethnicity Dashboard</div>
+    <div class="title2">(prototype based on dummy data)</div>
+
+    <!-- Dashboard Sections -->
+    <div class="dashboard">  
+        
+    <div class="section">
+      <div class="section-title">Relative Likelihood Estimates</div>
+      <div class="table-container" id="section1"></div>
+      <ul class="bullet-points">
+        <li>Relative likelihood are a statistical technique that gives us a way to compare ethnic disparities.</li>
+        <li>For the sanction rate, the D ethnic group is used as the baseline.</li>
+        <li>The C ethnic groups are 1.12 times more likely to be sanctioned than the D ethnic group.</li>
+        <li>Not all estimates of disparities are reliable, but significance tests can be used to determine which disparities represent real effects.</li>        
+      </ul>
+        <p>[add more info here to give more background on the tests and confidence intervals??]</p>
+        <p>[add option for data download??]</p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Confidence Intervals</div>
+      <div class="table-container" id="section2"></div>
+      <ul class="bullet-points">
+        <li>The E ethnic group is 1.5 times as likely to be sanctioned than the D ethnic group.</li>
+        <li>We can also be 95% certain that the relative likelihood of someone from the E ethnic group being sanctioned compared with D people is between 1.42 and 1.58.</li>
+        <li>Since this confidence interval does not include 1, we can say that the relative likelihood is statistically significant.</li>
+      </ul>
+    </div>
+        <div class="section" id="section3"></div>
+        <div class="section" id="section4"></div>
+    </div>
+    
+    <!-- Footer -->
+    <footer>
+      <p>For more information, visit the <a href=" https://www.gov.uk/government/collections/jobseekers-allowance-sanctions#latest-release">Benefit sanction statistics</a> on GOV.UK</p>
+    </footer>
+    
+    <script>
+        // Load data from CSV files for each section
+        d3.csv("Relative_likelihood_estimates.csv").then(function(tableData) {
+            createTable("section1", tableData, "Relative Likelihood Estimates");
+        });
+
+        d3.csv("Confidence_intervals.csv").then(function(tableData) {
+            createTable("section2", tableData, "Confidence intervals");
+        });
+
+       d3.csv("column_chart_data.csv").then(function(columnChartData) {
+            createColumnChart("section3", columnChartData, "Adverse Sanction Decisions by Ethnicity");
+        });
+
+//        d3.csv("forest_plot_data.csv").then(function(forestPlotData) {
+  //          createForestPlot("section4", forestPlotData, "Forest Plot");
+    //    });
+
+    // Load CSV Data for Tables (Section 1 and Section 2)
+    d3.csv("Relative_likelihood_estimates.csv").then(function(data) {
+      createTable("#section1", data);
+    });
+
+    d3.csv("Confidence_intervals.csv").then(function(data) {
+      createTable("#section2", data);
+    });
+
+    // Function to Create a Table
+    function createTable(selector, data) {
+      const table = d3.select(selector).append("table");
+      const thead = table.append("thead").append("tr");
+      const tbody = table.append("tbody");
+
+      // Add column headers
+      thead.selectAll("th")
+        .data(Object.keys(data[0]))
+        .enter()
+        .append("th")
+        .text(d => d);
+
+      // Add rows
+      const rows = tbody.selectAll("tr")
+        .data(data)
+        .enter()
+        .append("tr");
+
+      rows.selectAll("td")
+        .data(d => Object.values(d))
+        .enter()
+        .append("td")
+        .text(d => d);
+    }
+
+
+        // Function to create a column chart
+        function createColumnChart(sectionId, data, sectionTitle) {
+            const section = d3.select(`#${sectionId}`);
+            section.append('div').attr('class', 'section-title').text(sectionTitle);
+
+            const width = 800;
+            const height = 300;
+            const margin = { top: 30, right: 30, bottom: 40, left: 50 };
+
+            const svg = section.append('svg')
+                .attr('width', width + margin.left + margin.right)
+                .attr('height', height + margin.top + margin.bottom)
+                .append('g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+
+            const x = d3.scaleBand()
+                .domain(data.map(d => d.group))
+                .range([0, width])
+                .padding(0.2);
+
+            const y = d3.scaleLinear()
+                .domain([0, d3.max(data, d => Math.max(d.year1, d.year2))])
+                .nice()
+                .range([height, 0]);
+
+            const tooltip = d3.select("body").append("div")
+                .attr("class", "tooltip")
+                .style("position", "absolute")
+                .style("visibility", "hidden")
+                .style("background-color", "white")
+                .style("border", "1px solid black")
+                .style("padding", "5px");
+
+            svg.selectAll('.bar')
+                .data(data)
+                .enter()
+                .append('g')
+                .attr('transform', d => `translate(${x(d.group)}, 0)`)
+                .each(function(d) {
+                    const bar1 = d3.select(this).append('rect')
+                        .attr('x', 0)
+                        .attr('width', x.bandwidth() / 2)
+                        .attr('height', d => height - y(d.year1))
+                        .attr('y', d => y(d.year1))
+                        .style('fill', 'steelblue')
+                        .on('mouseover', function(event) {
+                            tooltip.style("visibility", "visible").text(`Group: ${d.group}, Year 1: ${d.year1}`);
+                        })
+                        .on('mousemove', function(event) {
+                            tooltip.style("top", (event.pageY + 5) + "px")
+                                .style("left", (event.pageX + 5) + "px");
+                        })
+                        .on('mouseout', function() {
+                            tooltip.style("visibility", "hidden");
+                        });
+
+                    const bar2 = d3.select(this).append('rect')
+                        .attr('x', x.bandwidth() / 2)
+                        .attr('width', x.bandwidth() / 2)
+                        .attr('height', d => height - y(d.year2))
+                        .attr('y', d => y(d.year2))
+                        .style('fill', 'orange')
+                        .on('mouseover', function(event) {
+                            tooltip.style("visibility", "visible").text(`Group: ${d.group}, Year 2: ${d.year2}`);
+                        })
+                        .on('mousemove', function(event) {
+                            tooltip.style("top", (event.pageY + 5) + "px")
+                                .style("left", (event.pageX + 5) + "px");
+                        })
+                        .on('mouseout', function() {
+                            tooltip.style("visibility", "hidden");
+                        });
+                });
+
+            svg.append('g')
+                .attr('class', 'x-axis')
+                .attr('transform', `translate(0,${height})`)
+                .call(d3.axisBottom(x))
+                .style('font-size', '16px');
+
+            svg.append('g')
+                .attr('class', 'y-axis')
+                .call(d3.axisLeft(y))
+                .style('font-size', '16px');
+        
+           // Add bullet points under the chart
+            section.append('ul')
+                .append('li').text('In August 2024, we began publishing ethnicity breakdowns for adverse sanction decisions.')
+                .append('li').text('In November 2024, we added additional breakdowns by ethnicity for UC conditionality groups where sanctions can be applied.');
+
+        }
+
+        // Function to create a forest plot
+
+        const forestPlotData = [
+            { group: "A", estimate: 0.97, ci_low: 0.93, ci_high: 1.02 },
+            { group: "B", estimate: 0.84, ci_low: 0.78, ci_high: 0.91 },
+            { group: "C", estimate: 1.12, ci_low: 1.05, ci_high: 1.18 },
+            { group: "E", estimate: 1.50, ci_low: 1.42, ci_high: 1.58 }
+        ];
+
+        // Create a forest plot for section4
+        createForestPlot("section4", forestPlotData, "Forest Plot");
+
+        function createForestPlot(sectionId, data, sectionTitle) {
+            const section = d3.select(`#${sectionId}`);
+            section.append('div').attr('class', 'section-title').text(sectionTitle);
+
+            const width = 800;
+            const height = 300;
+            const margin = { top: 30, right: 30, bottom: 40, left: 80 };
+
+            const svg = section.append('svg')
+                .attr('width', width + margin.left + margin.right)
+                .attr('height', height + margin.top + margin.bottom)
+                .append('g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+
+            const y = d3.scaleBand()
+                .domain(data.map(d => d.group))
+                .range([0, height])
+                .padding(0.2);
+
+            // Setting x-axis at 0.4 instead of 0 and ranging to 1.8 to better display the data   
+            const x = d3.scaleLinear()
+                .domain([0.6, 1.8]) 
+                .nice()
+                .range([0, width]);
+
+            // Tooltip div for displaying hover text
+            const tooltip = d3.select("body").append("div")
+                .attr("class", "tooltip");
+
+            svg.selectAll('.forest-group')
+                .data(data)
+                .enter()
+                .append('g')
+                .attr('class', 'forest-group')
+                .attr('transform', d => `translate(0,${y(d.group)})`)
+                .each(function(d) {
+                    // Draw the confidence interval line
+                    const line = d3.select(this).append('line')
+                        .attr('x1', x(d.ci_low))
+                        .attr('x2', x(d.ci_high))
+                        .attr('y1', 0)
+                        .attr('y2', 0)
+                        .style('stroke', 'black')
+                        .style('stroke-width', 2)
+                        .on('mouseover', function(event) {
+                            tooltip.style("visibility", "visible")
+                                .html(`${d.group}<br>CI: [${d.ci_low.toFixed(2)}, ${d.ci_high.toFixed(2)}]`);
+                        })
+                        .on('mousemove', function(event) {
+                            tooltip.style("top", (event.pageY + 5) + "px")
+                                .style("left", (event.pageX + 5) + "px");
+                        })
+                        .on('mouseout', function() {
+                            tooltip.style("visibility", "hidden");
+                        });
+
+                    // Draw the point estimate (circle)
+                    const circle = d3.select(this).append('circle')
+                        .attr('cx', x(d.estimate))
+                        .attr('cy', 0)
+                        .attr('r', 4)
+                        .style('fill', 'red')
+                        .on('mouseover', function(event) {
+                            tooltip.style("visibility", "visible")
+                                .html(`${d.group}<br>Estimate: ${d.estimate.toFixed(2)}`);
+                        })
+                        .on('mousemove', function(event) {
+                            tooltip.style("top", (event.pageY + 5) + "px")
+                                .style("left", (event.pageX + 5) + "px");
+                        })
+                        .on('mouseout', function() {
+                            tooltip.style("visibility", "hidden");
+                        });
+
+                    // Add text labels for the confidence interval bounds
+                    d3.select(this).append('text')
+                        .attr('x', x(d.ci_low))
+                        .attr('y', 15)
+                        .text(d.ci_low.toFixed(2))
+                        .style('font-size', '16px')
+                        .style('text-anchor', 'middle');
+
+                    d3.select(this).append('text')
+                        .attr('x', x(d.ci_high))
+                        .attr('y', 15)
+                        .text(d.ci_high.toFixed(2))
+                        .style('font-size', '16px')
+                        .style('text-anchor', 'middle');
+                });
+
+            // Add Y-axis for groups
+            svg.append('g')
+                .attr('class', 'y-axis')
+                .call(d3.axisLeft(y))
+                .style("font-size", "20px");
+
+            // Add X-axis for estimates (with confidence intervals)
+            svg.append('g')
+                .attr('class', 'x-axis')
+                .attr('transform', `translate(0,${height})`)
+                .call(d3.axisBottom(x))
+                .style("font-size", "18px");
+        
+        // Add bullet points under the chart
+            section.append('ul')
+                .append('li').text('Bullet point 1 for the forest plot.')
+                .append('li').text('Bullet point 2 for the forest plot.');
+        
+        }
+    </script>
+</body>
+</html>
